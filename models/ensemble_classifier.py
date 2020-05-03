@@ -12,6 +12,10 @@ from statistics import *
 from load_data import DataLoader
 import scipy
 
+TEST_PATH = "../data/test.csv"
+TRAIN_PATH = "../data/train.csv"
+SUBMISSION_PATH = "../data/sample_submission.csv"
+
 class EnsembleClassifier(object):
 
 	def __init__(self,

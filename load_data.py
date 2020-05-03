@@ -5,21 +5,25 @@ import pywt
 
 SAMPLE_RATE = 25
 SIGNAL_LEN = 1000
-TEST_PATH = "../data/test.csv"
-TRAIN_PATH = "../data/train.csv"
-SUBMISSION_PATH = "../data/sample_submission.csv"
 
 
 class DataLoader(object):
 
-	def __init__(self):
-		self.test_data = pd.read_csv(TEST_PATH)
-		self.train_data = pd.read_csv(TRAIN_PATH)
+	def __init__(self, train_path, test_path, periods=None):
+		self.train_path = train_path
+		self.test_path = test_path
+		self.test_data = pd.read_csv(self.test_path)
+		self.train_data = pd.read_csv(self.train_path)
 		self.signal_len = SIGNAL_LEN
+		self.periods = periods
 
-	def get_data(self):
+
+	def get_val_data(self):
 		#no test_data for now, since no open_channels
-		return [self.train_data[:4000002], self.train_data[4000002:]]
+		return [self.train_data[:4000000], self.train_data[4000000:]]
+
+	def get_test_data(self):
+		return self.test_data
 
 	def get_denoised_data(self, signal = None):
 		if signal is not None:
@@ -35,7 +39,12 @@ class DataLoader(object):
 			y = self._average_smoothing(self.train_data["signal"])
 		return y
 
-	def get_signals(self):
+	def get_signals(self, train_data=None, test_data=None):
+		#is this even useful
+		if train_data is None:
+			train_data = self.train_data
+		if test_data is None:
+			test_data = self.test_data
 		train_signals = []
 		train_targets = []
 		test_signals = []
@@ -45,10 +54,10 @@ class DataLoader(object):
 			min_lim = self.signal_len * i
 			max_lim = self.signal_len * (i + 1)
 
-			train_signals.append(list(self.train_data["signal"][min_lim : max_lim]))
-			train_targets.append(self.train_data["open_channels"][max_lim])
-			test_signals.append(list(self.test_data["signal"][min_lim : max_lim]))
-			test_targets.append(self.test_data["open_channels"][max_lim])
+			train_signals.append(list(train_data["signal"].iloc[min_lim : max_lim]))
+			train_targets.append(train_data["open_channels"].iloc[max_lim])
+			test_signals.append(list(test_data["signal"].iloc[min_lim : max_lim]))
+			test_targets.append(test_data["open_channels"].iloc[max_lim])
 	
 		train_signals = np.array(train_signals)
 		train_targets = np.array(train_targets)
@@ -80,3 +89,15 @@ class DataLoader(object):
 			end = end + stride
 			sample.extend(np.ones(end - start)*np.mean(signal[start:end]))
 		return np.array(sample)
+
+	def shift_data(self, data):
+		if self.periods is None:
+			periods = [1,2,3]
+		else:
+			periods = self.periods
+
+		data_transformed = data_transformed.copy()
+		for p in periods:
+			data_transformed[f"{self.column}_shifted_{p}"] = data_transformed[self.column].shift(
+					periods=p, fill_value = 0)
+		return data_transformed
